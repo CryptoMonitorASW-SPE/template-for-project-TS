@@ -1,21 +1,30 @@
 {
-    "main": "index.js",
+    "name": "template-for-project-ts",
+    "version": "1.0.0",
+    "description": "A template for TS project.",
+    "main": "dist/index.js",
     "scripts": {
-        "start": "node index.js",
-        "dev": "nodemon index.js"
+        "start": "node dist/index.js",
+        "build": "tsc",
+        "dev": "nodemon src/index.ts"
     },
-    "author": "Your Name",
-    "license": "MIT",
+    "author": "CryptoMonitor",
     "dependencies": {
+        "@types/express": "^5.0.0",
+        "@types/socket.io": "^3.0.1",
         "body-parser": "^1.20.2",
         "cors": "^2.8.5",
-        "express": "^4.18.2",
-        "mongoose": "^8.9.5"
+        "express": "^4.21.2",
+        "reflect-metadata": "^0.2.2",
+        "socket.io": "^4.8.1",
+        "tsyringe": "^4.8.0",
+        "typescript": "^5.7.3"
     },
     "engines": {
         "node": "22.13.0"
     },
     "devDependencies": {
-        "nodemon": "^3.0.1"
+        "nodemon": "^3.0.1",
+        "ts-node": "^10.9.2"
     }
 }
