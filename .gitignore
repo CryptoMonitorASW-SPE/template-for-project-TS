@@ -47,4 +47,7 @@ Thumbs.db
 # Ignore Gradle build output directory
 build
 
+#ignore report
+app/reports
+report
 
