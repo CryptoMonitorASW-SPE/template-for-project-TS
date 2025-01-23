@@ -83,12 +83,9 @@ jobs:
         run: |
           if [ -f "app/reports/test-report.txt" ]; then
             echo "message<<EOF" >> $GITHUB_OUTPUT
-            cat [test-report.txt](http://_vscodecontentref_/0)
             echo "EOF" >> $GITHUB_OUTPUT
-            echo "html_link=• [View Detailed Test Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_OUTPUT
           else
             echo "message=Tests have failed or no test report found. Please check the artifacts for more details." >> $GITHUB_OUTPUT
-            echo "html_link=• [View Detailed Test Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_OUTPUT
           fi
 
       - name: Comment PR with Test Report
