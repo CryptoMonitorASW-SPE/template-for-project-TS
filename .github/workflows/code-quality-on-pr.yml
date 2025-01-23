@@ -28,7 +28,7 @@ jobs:
         run: npm run eslint > lint-report.txt || true
 
       - name: Execute Tests (Mochawesome)
-        run: npm test
+        run: npm test:report
         working-directory: app
 
       - name: Upload ESLint Report
