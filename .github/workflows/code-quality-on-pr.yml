@@ -2,7 +2,7 @@ name: Code Quality and Test on PR
 
 on:
   pull_request:
-    branches: develop
+    branches: [ develop ]
     types: [ opened, synchronize, reopened ]
 
 jobs:
@@ -25,10 +25,10 @@ jobs:
         run: npm install
 
       - name: Execute ESLint
-        run: npm run eslint > lint-report.txt || true
-
+        run: npm run eslint:report || true
+        
       - name: Execute Tests (Mochawesome)
-        run: npm test:report
+        run: npm run test:report
         working-directory: app
 
       - name: Upload ESLint Report
@@ -38,12 +38,19 @@ jobs:
           name: eslint-report
           path: report/lint-report.txt
 
-      - name: Upload Mochawesome HTML
+      - name: Upload Mochawesome HTML Report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-report
+          name: mochawesome-html-report
           path: app/reports/test-report.html
+
+      - name: Upload Mochawesome JSON Report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mochawesome-json-report
+          path: app/reports/test-report.json
 
       - name: Comment PR with ESLint Report
         if: always()
@@ -53,7 +60,7 @@ jobs:
           header: "ESLint Report"
           message: |
             ```diff
-            $(cat lint-report.txt)
+            $(cat report/lint-report.txt)
             ```
 
       - name: Comment PR with Test Report Link
@@ -63,5 +70,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           header: "Test Report"
           message: |
-            Your tests have failed. Download or view the HTML artifact:
-            • “test-report.html” in the “Actions” → “Artifacts” of this PR.
+            Your tests have failed. Download or view the HTML artifact below:
+            • [Test Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) - Navigate to the "Artifacts" section to view the detailed report.
