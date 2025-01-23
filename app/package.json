@@ -9,7 +9,7 @@
         "dev": "nodemon src/index.ts",
         "test": "mocha -r ts-node/register 'test/**/*.test.ts'",
         "test:watch": "mocha -r ts-node/register --watch 'test/**/*.test.ts'",
-        "test:report": "mkdir -p reports && mocha -r ts-node/register 'test/**/*.test.ts' --reporter mochawesome --reporter-options reportDir=reports,reportFilename=test-report"
+        "test:report": "mkdir -p reports && mocha -r ts-node/register 'test/**/*.test.ts' --reporter mochawesome --reporter-options reportDir=reports,reportFilename=test-report && mocha -r ts-node/register 'test/**/*.test.ts' --reporter spec > reports/test-report.txt"
     },
     "author": "CryptoMonitor",
     "dependencies": {

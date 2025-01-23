@@ -24,10 +24,24 @@ jobs:
       - name: Install Root Dependencies
         run: npm install
 
+      - name: Install App Dependencies
+        run: npm install
+        working-directory: app
+
       - name: Execute ESLint
         run: npm run eslint:report || true
-        
+
+      - name: Check for Tests
+        id: check_tests
+        run: |
+          if [ -d "app/test" ] && [ "$(ls -A app/test)" ]; then
+            echo "tests_exist=true" >> $GITHUB_ENV
+          else
+            echo "tests_exist=false" >> $GITHUB_ENV
+          fi
+
       - name: Execute Tests (Mochawesome)
+        if: env.tests_exist == 'true'
         run: npm run test:report
         working-directory: app
 
@@ -39,18 +53,45 @@ jobs:
           path: report/lint-report.txt
 
       - name: Upload Mochawesome HTML Report
-        if: failure()
+        if: failure() && env.tests_exist == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: mochawesome-html-report
           path: app/reports/test-report.html
 
-      - name: Upload Mochawesome JSON Report
-        if: failure()
+      - name: Upload Readable Test Report
+        if: env.tests_exist == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: mochawesome-json-report
-          path: app/reports/test-report.json
+          name: readable-test-report
+          path: app/reports/test-report.txt
+
+      - name: Set ESLint Report Message
+        id: set_eslint_report_message
+        run: |
+          if [ -f "report/lint-report.txt" ]; then
+            echo "message<<EOF" >> $GITHUB_OUTPUT
+            cat report/lint-report.txt
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "message=No ESLint report found." >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set Test Report Message
+        id: set_test_report_message
+        run: |
+          if [ "${{ env.tests_exist }}" == "true" ]; then
+            if [ -f "app/reports/test-report.txt" ]; then
+              echo "message=$(cat app/reports/test-report.txt)" >> $GITHUB_OUTPUT
+              echo "html_link=• [View Detailed HTML Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_OUTPUT
+            else
+              echo "message=Tests have failed. Please check the artifacts for more details." >> $GITHUB_OUTPUT
+              echo "html_link=• [View Detailed HTML Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "message=No tests found." >> $GITHUB_OUTPUT
+            echo "html_link=" >> $GITHUB_OUTPUT
+          fi
 
       - name: Comment PR with ESLint Report
         if: always()
@@ -60,15 +101,15 @@ jobs:
           header: "ESLint Report"
           message: |
             ```diff
-            $(cat report/lint-report.txt)
+            ${{ steps.set_eslint_report_message.outputs.message }}
             ```
 
-      - name: Comment PR with Test Report Link
-        if: failure()
+      - name: Comment PR with Test Report
+        if: always()
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           header: "Test Report"
           message: |
-            Your tests have failed. Download or view the HTML artifact below:
-            • [Test Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) - Navigate to the "Artifacts" section to view the detailed report.
+            ${{ steps.set_test_report_message.outputs.message }}
+            ${{ steps.set_test_report_message.outputs.html_link }}
