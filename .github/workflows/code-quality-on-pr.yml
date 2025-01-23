@@ -70,9 +70,13 @@ jobs:
         id: set_eslint_report_message
         run: |
           if [ -f "report/lint-report.txt" ]; then
-            echo "message<<EOF" >> $GITHUB_OUTPUT
-            cat report/lint-report.txt
-            echo "EOF" >> $GITHUB_OUTPUT
+            if [ -s "report/lint-report.txt" ]; then
+              echo "message<<EOF" >> $GITHUB_OUTPUT
+              cat report/lint-report.txt
+              echo "EOF" >> $GITHUB_OUTPUT
+            else
+              echo "message=No lint errors found." >> $GITHUB_OUTPUT
+            fi
           else
             echo "message=No ESLint report found." >> $GITHUB_OUTPUT
           fi
