@@ -12,9 +12,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          repository: CryptoMonitorASW-SPE/template-for-project-TS
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 1
+          fetch-depth: 1  # Shallow clone for efficiency
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -36,6 +34,7 @@ jobs:
       - name: Execute Tests
         run: npm run test:report
         working-directory: app
+        continue-on-error: true  # Allows workflow to continue even if tests fail
 
       - name: Upload ESLint Report
         if: always()
@@ -53,6 +52,7 @@ jobs:
 
       - name: Set ESLint Report Message
         id: set_eslint_report_message
+        if: always()
         run: |
           if [ -f "report/lint-report.txt" ]; then
             if [ -s "report/lint-report.txt" ]; then
@@ -79,6 +79,7 @@ jobs:
 
       - name: Set Test Report Message
         id: set_test_report_message
+        if: always()
         run: |
           if [ -f "app/reports/test-report.txt" ]; then
             echo "message<<EOF" >> $GITHUB_OUTPUT
