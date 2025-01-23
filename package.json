@@ -20,7 +20,7 @@
   "scripts": {
     "build": "cd app && tsc",
     "prepare": "husky",
-    "eslint": "npx eslint app/src/**/*.ts"
+    "eslint": "mkdir -p report && npx eslint app/src/**/*.ts > report/lint-report.txt"
   },
   "engines": {
     "node": "22.13.1"
