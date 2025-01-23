@@ -1,52 +1,67 @@
-name: Code Quality on PR
+name: Code Quality and Test on PR
 
 on:
-  push:
-    branches:
-      - develop
   pull_request:
-    types: [opened, synchronize, reopened]
+    branches: develop
+    types: [ opened, synchronize, reopened ]
 
 jobs:
-  lint:
+  lint-and-test:
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
 
     steps:
-      - name: Code checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup nodejs
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.13'
+          node-version: '22.13.1'
 
-      - name: Install dependencies
+      - name: Install Root Dependencies
         run: npm install
 
       - name: Execute ESLint
-        id: eslint
-        run: npx eslint app/src/**/*.ts > eslint-report.txt || true
+        run: npm run eslint > lint-report.txt || true
 
-      - name: Check if ESLint report is empty
-        id: check_empty
-        run: |
-          if [ ! -s eslint-report.txt ]; then
-            echo "No linting issues found." > eslint-report.txt
-          fi
+      - name: Execute Tests (Mochawesome)
+        run: npm test
+        working-directory: app
 
-      - name: Load report ESLint
-
+      - name: Upload ESLint Report
+        if: always()
         uses: actions/upload-artifact@v4
-
         with:
           name: eslint-report
-          path: eslint-report.txt
+          path: report/lint-report.txt
 
-      - name: Comment PR with ESLint report
+      - name: Upload Mochawesome HTML
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: app/reports/test-report.html
+
+      - name: Comment PR with ESLint Report
+        if: always()
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          path: eslint-report.txt
+          header: "ESLint Report"
+          message: |
+            ```diff
+            $(cat lint-report.txt)
+            ```
+
+      - name: Comment PR with Test Report Link
+        if: failure()
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          header: "Test Report"
+          message: |
+            Your tests have failed. Download or view the HTML artifact:
+            • “test-report.html” in the “Actions” → “Artifacts” of this PR.
