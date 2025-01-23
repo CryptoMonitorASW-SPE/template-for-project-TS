@@ -1,9 +1,11 @@
-name: Code Quality and Test on PR
+name: Code Quality on PR
 
 on:
+  push:
+    branches:
+      - develop
   pull_request:
-    branches: [ develop ]
-    types: [ opened, synchronize, reopened ]
+    types: [opened, synchronize, reopened]
 
 jobs:
   lint-and-test:
@@ -13,107 +15,79 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.13.1'
+          node-version: 22.13.1
 
       - name: Install Root Dependencies
-        run: npm install
+        run: npm ci
+        working-directory: .
 
       - name: Install App Dependencies
-        run: npm install
+        run: npm ci
         working-directory: app
 
       - name: Execute ESLint
-        run: npm run eslint:report || true
+        id: eslint
+        run: npx eslint app/src/**/*.ts > eslint-report.txt || true
 
-      - name: Check for Tests
-        id: check_tests
+      - name: Check if ESLint report is empty
+        id: check_empty_eslint
         run: |
-          if [ -d "app/test" ] && [ "$(ls -A app/test)" ]; then
-            echo "tests_exist=true" >> $GITHUB_ENV
-          else
-            echo "tests_exist=false" >> $GITHUB_ENV
+          if [ ! -s eslint-report.txt ]; then
+            echo "No linting issues found." > eslint-report.txt
           fi
-
-      - name: Execute Tests (Mochawesome)
-        if: env.tests_exist == 'true'
-        run: npm run test:report
-        working-directory: app
 
       - name: Upload ESLint Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: eslint-report
-          path: report/lint-report.txt
-
-      - name: Upload Mochawesome HTML Report
-        if: failure() && env.tests_exist == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: mochawesome-html-report
-          path: app/reports/test-report.html
-
-      - name: Upload Readable Test Report
-        if: env.tests_exist == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: readable-test-report
-          path: app/reports/test-report.txt
-
-      - name: Set ESLint Report Message
-        id: set_eslint_report_message
-        run: |
-          if [ -f "report/lint-report.txt" ]; then
-            if [ -s "report/lint-report.txt" ]; then
-              echo "message<<EOF" >> $GITHUB_OUTPUT
-              cat report/lint-report.txt
-              echo "EOF" >> $GITHUB_OUTPUT
-            else
-              echo "message=No lint errors found." >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "message=No ESLint report found." >> $GITHUB_OUTPUT
-          fi
-
-      - name: Set Test Report Message
-        id: set_test_report_message
-        run: |
-          if [ "${{ env.tests_exist }}" == "true" ]; then
-            if [ -f "app/reports/test-report.txt" ]; then
-              echo "message=$(cat app/reports/test-report.txt)" >> $GITHUB_OUTPUT
-              echo "html_link=• [View Detailed HTML Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_OUTPUT
-            else
-              echo "message=Tests have failed. Please check the artifacts for more details." >> $GITHUB_OUTPUT
-              echo "html_link=• [View Detailed HTML Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "message=No tests found." >> $GITHUB_OUTPUT
-            echo "html_link=" >> $GITHUB_OUTPUT
-          fi
+          path: eslint-report.txt
 
       - name: Comment PR with ESLint Report
         if: always()
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          header: "ESLint Report"
-          message: |
-            ```diff
-            ${{ steps.set_eslint_report_message.outputs.message }}
-            ```
+          path: eslint-report.txt
+          header: ESLint Report
+          
+
+      - name: Execute Tests
+        id: test
+        run: npm run test:report
+        working-directory: app
+
+      - name: Check if Test report is empty
+        id: check_empty_test
+        run: |
+          if [ ! -s app/reports/test-report.txt ]; then
+            echo "No test issues found." > app/reports/test-report.txt
+          fi
+
+      - name: Upload Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: app/reports/test-report.txt
 
       - name: Comment PR with Test Report
         if: always()
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          header: "Test Report"
-          message: |
-            ${{ steps.set_test_report_message.outputs.message }}
-            ${{ steps.set_test_report_message.outputs.html_link }}
+          path: app/reports/test-report.txt
+          header: Test Report
+          
+
+      - name: Fail if tests failed
+        if: failure()
+        run: exit 1
