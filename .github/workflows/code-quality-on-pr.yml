@@ -7,40 +7,29 @@ on:
 
 jobs:
   lint-and-test:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          repository: CryptoMonitorASW-SPE/template-for-project-TS
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.13.1'
+          node-version: 22.13.1
 
-      - name: Install Root Dependencies
-        run: npm install
-
-      - name: Install App Dependencies
+      - name: Install Dependencies
         run: npm install
         working-directory: app
 
       - name: Execute ESLint
         run: npm run eslint:report || true
+        working-directory: app
 
-      - name: Check for Tests
-        id: check_tests
-        run: |
-          if [ -d "app/test" ] && [ "$(ls -A app/test)" ]; then
-            echo "tests_exist=true" >> $GITHUB_ENV
-          else
-            echo "tests_exist=false" >> $GITHUB_ENV
-          fi
-
-      - name: Execute Tests (Mochawesome)
+      - name: Execute Tests
         if: env.tests_exist == 'true'
         run: npm run test:report
         working-directory: app
@@ -52,19 +41,12 @@ jobs:
           name: eslint-report
           path: report/lint-report.txt
 
-      - name: Upload Mochawesome HTML Report
-        if: failure() && env.tests_exist == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: mochawesome-html-report
-          path: app/reports/test-report.html
-
       - name: Upload Readable Test Report
         if: env.tests_exist == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: readable-test-report
-          path: app/reports/test-report.txt
+          path: reports/test-report.txt
 
       - name: Set ESLint Report Message
         id: set_eslint_report_message
@@ -81,22 +63,6 @@ jobs:
             echo "message=No ESLint report found." >> $GITHUB_OUTPUT
           fi
 
-      - name: Set Test Report Message
-        id: set_test_report_message
-        run: |
-          if [ "${{ env.tests_exist }}" == "true" ]; then
-            if [ -f "app/reports/test-report.txt" ]; then
-              echo "message=$(cat app/reports/test-report.txt)" >> $GITHUB_OUTPUT
-              echo "html_link=• [View Detailed HTML Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_OUTPUT
-            else
-              echo "message=Tests have failed. Please check the artifacts for more details." >> $GITHUB_OUTPUT
-              echo "html_link=• [View Detailed HTML Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "message=No tests found." >> $GITHUB_OUTPUT
-            echo "html_link=" >> $GITHUB_OUTPUT
-          fi
-
       - name: Comment PR with ESLint Report
         if: always()
         uses: marocchino/sticky-pull-request-comment@v2
@@ -108,6 +74,24 @@ jobs:
             ${{ steps.set_eslint_report_message.outputs.message }}
             ```
 
+      - name: Set Test Report Message
+        id: set_test_report_message
+        run: |
+          if [ "${{ env.tests_exist }}" == "true" ]; then
+            if [ -f "reports/test-report.txt" ]; then
+              echo "message<<EOF" >> $GITHUB_OUTPUT
+              cat reports/test-report.txt
+              echo "EOF" >> $GITHUB_OUTPUT
+              echo "html_link=• [View Detailed Test Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_OUTPUT
+            else
+              echo "message=Tests have failed. Please check the artifacts for more details." >> $GITHUB_OUTPUT
+              echo "html_link=• [View Detailed Test Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "message=No tests found." >> $GITHUB_OUTPUT
+            echo "html_link=" >> $GITHUB_OUTPUT
+          fi
+
       - name: Comment PR with Test Report
         if: always()
         uses: marocchino/sticky-pull-request-comment@v2
@@ -115,5 +99,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           header: "Test Report"
           message: |
+            ```diff
             ${{ steps.set_test_report_message.outputs.message }}
+            ```
             ${{ steps.set_test_report_message.outputs.html_link }}
